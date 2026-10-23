@@ -50,9 +50,6 @@
                     <input type="text" id="searchInput" placeholder="Search contacts..." 
                         class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
                 </div>
-                <button onclick="exportToVCF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center gap-1.5 whitespace-nowrap" title="Google Contacts ke liye Export (.vcf)">
-                    <i class="fa-solid fa-file-export"></i> Sync/Export
-                </button>
                 <button onclick="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-user-plus"></i> Naya Contact
                 </button>
@@ -83,15 +80,6 @@
                 </div>
                 <p class="font-medium text-slate-600">Koi contact select nahi kiya gaya hai</p>
                 <p class="text-xs text-slate-400 mt-1">Left side se kisi contact par click karein.</p>
-                
-                <div class="mt-6 p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl max-w-sm text-left">
-                    <h4 class="text-xs font-bold text-indigo-900 flex items-center gap-1.5 mb-1">
-                        <i class="fa-brands fa-google text-indigo-600"></i> Google Sync Info
-                    </h4>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Aap top bar ke <strong>Sync/Export</strong> button par click karke contacts ko <strong>.vcf</strong> format mein download karke Google Contacts mein import kar sakte hain.
-                    </p>
-                </div>
             </div>
 
             <div id="contactDetailsContent" class="hidden flex flex-col h-full slide-in">
@@ -197,29 +185,6 @@
         ];
         let activeContactId = null;
         let saveTimeout = null;
-
-        // VCF Export for Google Contacts
-        function exportToVCF() {
-            if (contacts.length === 0) {
-                showToast('Export karne ke liye koi contact nahi hai.');
-                return;
-            }
-
-            let vcfContent = '';
-            contacts.forEach(c => {
-                vcfContent += `BEGIN:VCARD\nVERSION:3.0\nFN:${c.name}\nTEL;TYPE=CELL:${c.phone}\nNOTE:${c.notes || ''}\nCATEGORIES:${c.category || 'General'}\nEND:VCARD\n`;
-            });
-
-            const blob = new Blob([vcfContent], { type: 'text/vcard;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `contacts_google_sync_${new Date().toISOString().slice(0,10)}.vcf`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            showToast('Google Contacts ke liye .vcf file download ho gayi!');
-        }
 
         // Init App
         window.onload = function() {
