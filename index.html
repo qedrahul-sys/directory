@@ -83,36 +83,53 @@
     <!-- Header -->
     <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-20">
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 shrink-0">
                 <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md">
                     <i class="fa-solid fa-address-book text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-slate-900">Smart Directory</h1>
-                    <p class="text-xs text-slate-500">Call, WhatsApp & Notes ek hi jagah par</p>
+                    <h1 class="text-xl font-bold text-slate-900 whitespace-nowrap">Smart Directory</h1>
+                    <p class="text-xs text-slate-500 whitespace-nowrap">Call, WhatsApp &amp; Notes ek hi jagah par</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-                <div class="relative flex-1 sm:w-64">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-search"></i>
-                    </span>
-                    <input type="text" id="searchInput" placeholder="Search contacts..."
-                        class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 transition-all duration-200 focus:bg-white focus:shadow-md">
-                </div>
-                <button onclick="openAddModal()" class="btn-press bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-user-plus"></i> Naya Contact
-                </button>
-                <div id="userChip" class="hidden items-center gap-2 pl-2 pr-1 py-1 bg-slate-100 rounded-xl">
-                    <img id="userPhoto" alt="" class="w-7 h-7 rounded-lg object-cover hidden">
-                    <span id="userName" class="hidden sm:inline text-xs font-medium text-slate-600 max-w-[90px] truncate"></span>
-                    <button onclick="logout()" title="Logout" class="btn-press p-1.5 hover:bg-slate-200 text-slate-500 rounded-lg transition text-xs">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+            <div class="flex items-center gap-2 sm:gap-3 w-full">
+                <!-- Search 70% + Add button 30% -->
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <div class="relative flex-[7] min-w-0">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-search"></i>
+                        </span>
+                        <input type="text" id="searchInput" placeholder="Search contacts..."
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 transition-all duration-200 focus:bg-white focus:shadow-md">
+                    </div>
+                    <button onclick="openAddModal()" title="Naya Contact" aria-label="Naya Contact"
+                        class="btn-press flex-[3] flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-base shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i>
                     </button>
+                </div>
+                <!-- Logged-in user (logout button nahi) -->
+                <div id="userChip" class="hidden items-center gap-2 pl-2 pr-2 py-1.5 bg-slate-100 rounded-xl shrink-0">
+                    <img id="userPhoto" alt="" class="w-7 h-7 rounded-lg object-cover hidden">
+                    <i id="userIcon" class="fa-solid fa-user text-slate-400 text-xs"></i>
+                    <span id="userName" class="hidden sm:inline text-xs font-medium text-slate-600 max-w-[90px] truncate"></span>
                 </div>
             </div>
         </div>
     </header>
+
+    <!-- Firestore rules warning banner -->
+    <div id="rulesBanner" class="hidden max-w-6xl mx-auto px-4 pt-4 w-full">
+        <div class="fade-pop bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3 py-2.5 rounded-xl flex items-start gap-2 shadow-sm">
+            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+            <span class="flex-1 leading-relaxed">
+                <b>Firestore rules data block kar rahe hain</b> (permission-denied). Firebase Console → Firestore → Rules me
+                <code class="bg-white/70 px-1 rounded">firestore.rules</code> file ka content paste karke <b>Publish</b> karein.
+            </span>
+            <button onclick="document.getElementById('rulesBanner').classList.add('hidden')" class="btn-press text-rose-400 hover:text-rose-600 p-0.5">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
 
     <!-- Main -->
     <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full flex">
@@ -274,6 +291,21 @@
             }, 195);
         }
 
+        function showRulesBanner() {
+            const b = $('rulesBanner');
+            if (b) b.classList.remove('hidden');
+        }
+        function handleDbError(prefix, err) {
+            console.error(prefix, err);
+            const code = (err && err.code) || '';
+            if (code === 'permission-denied') {
+                showRulesBanner();
+                showToast('Firestore permission denied — rules check karein.');
+            } else {
+                showToast(prefix + (code || (err && err.message) || ''));
+            }
+        }
+
         function showToast(message) {
             const toast = $('toast');
             $('toastMessage').innerText = message;
@@ -289,7 +321,7 @@
                 return 'Login window band ho gaya. Dobara "Google se Login karein" par click karein.';
             }
             if (code === 'auth/unauthorized-domain') {
-                return 'Yeh domain Google login ke liye authorized nahi hai. Firebase Console → Authentication → Settings → Authorized domains me yeh domain add karein.';
+                return 'Yeh domain Google login ke liye authorized nahi hai. Browser me "localhost" use karein (127.0.0.1 authorized nahi hota), ya Firebase Console → Authentication → Settings → Authorized domains me apna domain add karein.';
             }
             if (code === 'auth/operation-not-allowed') {
                 return 'Google sign-in provider enable nahi hai. Firebase Console → Authentication → Sign-in method me Google enable karein.';
@@ -362,6 +394,10 @@
                 if (user.photoURL) {
                     $('userPhoto').src = user.photoURL;
                     $('userPhoto').classList.remove('hidden');
+                    $('userIcon').classList.add('hidden');
+                } else {
+                    $('userPhoto').classList.add('hidden');
+                    $('userIcon').classList.remove('hidden');
                 }
                 startListening();
             } else {
@@ -369,6 +405,7 @@
                 contacts = [];
                 activeContactId = null;
                 if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+                $('rulesBanner').classList.add('hidden');
                 $('contactCount').innerText = '0';
                 $('contactsList').innerHTML = `<div class="empty-pop text-center py-8 text-slate-400 text-sm">Login karke apne contacts dekhein</div>`;
                 $('userChip').classList.add('hidden');
@@ -398,13 +435,12 @@
                     closeModalEl($('detailModal'), () => { activeContactId = null; });
                 }
             }, (err) => {
-                console.error(err);
                 const m = (err && err.code) || '';
-                if (m === 'permission-denied') {
-                    showToast('Firestore permission denied — security rules check karein.');
-                } else {
-                    showToast('Sync error: ' + (m || err.message));
-                }
+                if (m === 'permission-denied') showRulesBanner();
+                console.error(err);
+                showToast(m === 'permission-denied'
+                    ? 'Firestore permission denied — security rules check karein.'
+                    : 'Sync error: ' + (m || err.message));
             });
         }
 
@@ -507,7 +543,7 @@
                     const statusEl = $('saveStatus');
                     statusEl.classList.remove('opacity-0');
                     setTimeout(() => statusEl.classList.add('opacity-0'), 1500);
-                } catch (e) { showToast('Notes save nahi hue: ' + (e.code || e.message)); }
+                } catch (e) { handleDbError('Notes save nahi hue: ', e); }
             }, 600);
         };
 
@@ -560,8 +596,7 @@
                     if (active) { openModal($('detailModal')); renderDetail(active, true); }
                 });
             } catch (err) {
-                console.error(err);
-                showToast('Save nahi hua: ' + (err.code || err.message));
+                handleDbError('Save nahi hua: ', err);
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.innerText = 'Save Contact';
@@ -580,8 +615,7 @@
                     showToast('Contact delete ho gaya.');
                 });
             } catch (err) {
-                console.error(err);
-                showToast('Delete nahi hua: ' + (err.code || err.message));
+                handleDbError('Delete nahi hua: ', err);
             }
         };
 
@@ -594,5 +628,5 @@
             if (!$('detailModal').classList.contains('hidden')) closeDetail();
         });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5542e93998f0769',t:'MTc5MzgwMTIxNA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5542e93998f0769',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
