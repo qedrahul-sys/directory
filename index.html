@@ -9,27 +9,74 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .slide-in { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(30px); }
-            to { opacity: 1; transform: translateX(0); }
+
+        /* ---------- Smooth animations ---------- */
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes fadeOut { from { opacity: 1 } to { opacity: 0 } }
+        @keyframes popIn {
+            0%   { opacity: 0; transform: scale(.90) translateY(14px); }
+            60%  { opacity: 1; transform: scale(1.015) translateY(0); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes popOut {
+            0%   { opacity: 1; transform: scale(1) translateY(0); }
+            100% { opacity: 0; transform: scale(.94) translateY(10px); }
+        }
+        @keyframes rowIn {
+            from { opacity: 0; transform: translateY(10px) scale(.985); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes popAvatar {
+            0% { transform: scale(.6); } 70% { transform: scale(1.08); } 100% { transform: scale(1); }
+        }
+        @keyframes spinOnce { to { transform: rotate(360deg); } }
+
+        .modal-backdrop { animation: fadeIn .22s ease-out both; }
+        .modal-backdrop.closing { animation: fadeOut .19s ease-in both; }
+
+        .pop-card { animation: popIn .34s cubic-bezier(.16, 1, .3, 1) both; will-change: transform, opacity; }
+        .pop-card.closing { animation: popOut .19s cubic-bezier(.4, 0, 1, 1) both; }
+
+        .fade-pop { animation: fadeIn .35s ease-out both; }
+
+        .list-row { animation: rowIn .3s cubic-bezier(.16, 1, .3, 1) both; }
+        .list-row:hover { transform: translateY(-2px); box-shadow: 0 8px 18px -8px rgba(79, 70, 229, .35); }
+        .list-row:active { transform: scale(.985); }
+        .list-row, .list-row * { transition: background-color .18s ease, border-color .18s ease,
+                                 box-shadow .2s ease, transform .18s cubic-bezier(.16,1,.3,1), color .18s ease; }
+
+        .avatar-pop { animation: popAvatar .45s cubic-bezier(.16, 1, .3, 1) both; }
+
+        .btn-press { transition: transform .16s cubic-bezier(.16,1,.3,1), box-shadow .18s ease,
+                                 background-color .18s ease, color .18s ease, opacity .18s ease; }
+        .btn-press:hover { transform: translateY(-1.5px); box-shadow: 0 8px 16px -10px rgba(15, 23, 42, .5); }
+        .btn-press:active { transform: scale(.955); }
+        .btn-press:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+
+        .empty-pop { animation: fadeIn .35s ease-out both; }
+        .spinner { animation: spinOnce .8s linear infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: .001s !important; transition-duration: .001s !important; }
         }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-50 to-indigo-50 text-slate-800 h-full flex flex-col">
 
     <!-- Login Screen -->
-    <div id="loginScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 w-full max-w-sm text-center">
-            <div class="bg-indigo-600 text-white w-14 h-14 rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4">
+    <div id="loginScreen" class="modal-backdrop fixed inset-0 z-50 bg-gradient-to-br from-slate-50 to-indigo-50 hidden items-center justify-center p-4">
+        <div class="pop-card bg-white rounded-2xl shadow-xl border border-slate-200 p-8 w-full max-w-sm text-center">
+            <div class="bg-indigo-600 text-white w-14 h-14 rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4 avatar-pop">
                 <i class="fa-solid fa-address-book text-2xl"></i>
             </div>
             <h1 class="text-xl font-bold text-slate-900">Smart Directory</h1>
             <p class="text-sm text-slate-500 mt-1 mb-6">Apne contacts aur notes dekhne ke liye login karein</p>
-            <button id="loginBtn" class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 px-4 rounded-xl font-medium text-sm shadow-sm transition">
-                <i class="fa-brands fa-google text-rose-500"></i> Google se Login karein
+            <button id="loginBtn" class="btn-press w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 px-4 rounded-xl font-medium text-sm shadow-sm transition">
+                <i id="loginIcon" class="fa-brands fa-google text-rose-500"></i>
+                <i id="loginSpinner" class="fa-solid fa-circle-notch spinner hidden text-indigo-600"></i>
+                <span id="loginBtnText">Google se Login karein</span>
             </button>
-            <p id="loginError" class="text-xs text-rose-600 mt-4 hidden"></p>
+            <p id="loginError" class="text-xs text-rose-600 mt-4 hidden leading-relaxed"></p>
         </div>
     </div>
 
@@ -51,22 +98,26 @@
                         <i class="fa-solid fa-search"></i>
                     </span>
                     <input type="text" id="searchInput" placeholder="Search contacts..."
-                        class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                        class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 transition-all duration-200 focus:bg-white focus:shadow-md">
                 </div>
-                <button onclick="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center gap-2 whitespace-nowrap">
+                <button onclick="openAddModal()" class="btn-press bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-user-plus"></i> Naya Contact
                 </button>
-                <button onclick="logout()" title="Logout" class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition text-sm">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </button>
+                <div id="userChip" class="hidden items-center gap-2 pl-2 pr-1 py-1 bg-slate-100 rounded-xl">
+                    <img id="userPhoto" alt="" class="w-7 h-7 rounded-lg object-cover hidden">
+                    <span id="userName" class="hidden sm:inline text-xs font-medium text-slate-600 max-w-[90px] truncate"></span>
+                    <button onclick="logout()" title="Logout" class="btn-press p-1.5 hover:bg-slate-200 text-slate-500 rounded-lg transition text-xs">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- Main -->
-    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full flex">
 
-        <div class="md:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col h-[70vh] md:h-[calc(100vh-140px)]">
+        <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col h-[calc(100vh-180px)]">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="font-semibold text-slate-700 flex items-center gap-2">
                     <i class="fa-solid fa-users text-indigo-600"></i> Contacts
@@ -77,19 +128,13 @@
             <div id="contactsList" class="overflow-y-auto flex-1 space-y-2 pr-1"></div>
         </div>
 
-        <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-[70vh] md:h-[calc(100vh-140px)] justify-between" id="detailPanel">
-            <div id="noContactSelected" class="flex flex-col items-center justify-center h-full text-slate-400 text-center">
-                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3 text-2xl shadow-inner">
-                    <i class="fa-solid fa-address-card"></i>
-                </div>
-                <p class="font-medium text-slate-600">Koi contact select nahi kiya gaya hai</p>
-                <p class="text-xs text-slate-400 mt-1">Left side se kisi contact par click karein.</p>
-            </div>
+        <!-- Detail popup: contact select karne par center me khulta hai -->
+        <div id="detailModal" class="modal-backdrop fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 sm:p-6" onclick="if (event.target === this) closeDetail()">
+            <div id="detailPanel" data-modal-card class="pop-card bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 flex flex-col">
 
-            <div id="contactDetailsContent" class="hidden flex flex-col h-full slide-in">
                 <div class="flex items-start justify-between border-b border-slate-100 pb-4">
                     <div class="flex items-center gap-4">
-                        <div id="detailAvatar" class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">A</div>
+                        <div id="detailAvatar" class="avatar-pop w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">A</div>
                         <div>
                             <h2 id="detailName" class="text-xl font-bold text-slate-900">Name</h2>
                             <p id="detailPhone" class="text-sm text-slate-500 font-medium mt-0.5">+91 00000 00000</p>
@@ -97,33 +142,36 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="editCurrentContact()" class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition text-sm" title="Edit Contact">
+                        <button onclick="editCurrentContact()" class="btn-press p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition text-sm" title="Edit Contact">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button onclick="deleteCurrentContact()" class="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition text-sm" title="Delete Contact">
+                        <button onclick="deleteCurrentContact()" class="btn-press p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition text-sm" title="Delete Contact">
                             <i class="fa-solid fa-trash"></i>
+                        </button>
+                        <button onclick="closeDetail()" class="btn-press p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition text-sm" title="Band karein">
+                            <i class="fa-solid fa-xmark text-lg"></i>
                         </button>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 my-6">
-                    <a id="callBtn" href="#" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-medium shadow-sm transition text-sm">
+                    <a id="callBtn" href="#" class="btn-press flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-medium shadow-sm transition text-sm">
                         <i class="fa-solid fa-phone"></i> Call
                     </a>
-                    <a id="whatsappBtn" href="#" target="_blank" rel="noopener" class="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium shadow-sm transition text-sm">
+                    <a id="whatsappBtn" href="#" target="_blank" rel="noopener" class="btn-press flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium shadow-sm transition text-sm">
                         <i class="fa-brands fa-whatsapp text-lg"></i> WhatsApp
                     </a>
                 </div>
 
-                <div class="flex-1 flex flex-col mt-2">
+                <div class="flex flex-col mt-2">
                     <div class="flex justify-between items-center mb-2">
                         <label class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-note-sticky text-indigo-600"></i> Personal Notes & Reminders
+                            <i class="fa-solid fa-note-sticky text-indigo-600"></i> Personal Notes &amp; Reminders
                         </label>
                         <span id="saveStatus" class="text-xs text-emerald-600 font-medium opacity-0 transition-opacity">Saved to cloud</span>
                     </div>
                     <textarea id="contactNotes" placeholder="Yahan is contact ke baare mein notes likhein..."
-                        class="w-full flex-1 p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 resize-none leading-relaxed"
+                        class="w-full min-h-[180px] p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 resize-none leading-relaxed transition-all duration-200 focus:bg-white"
                         oninput="triggerAutoSave()"></textarea>
                 </div>
             </div>
@@ -131,11 +179,11 @@
     </main>
 
     <!-- Add/Edit Modal -->
-    <div id="contactModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div id="contactModal" class="modal-backdrop fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if (event.target === this) closeModal()">
+        <div data-modal-card class="pop-card bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 id="modalTitle" class="font-bold text-slate-800">Naya Contact Jodein</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+                <button onclick="closeModal()" class="btn-press text-slate-400 hover:text-slate-600 text-sm p-1 rounded-lg">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -144,35 +192,35 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pura Naam</label>
                     <input type="text" id="nameInput" required placeholder="Jaise: Rahul Sharma"
-                        class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Mobile Number</label>
                     <input type="tel" id="phoneInput" required placeholder="Jaise: 9876543210"
-                        class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Category</label>
                     <input type="text" id="categoryInput" placeholder="Jaise: Family, Office, Client, etc."
-                        class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white transition-all duration-200">
                 </div>
                 <div class="pt-3 flex gap-3">
-                    <button type="button" onclick="closeModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-medium text-sm transition">Cancel</button>
-                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium text-sm shadow-sm transition">Save Contact</button>
+                    <button type="button" onclick="closeModal()" class="btn-press flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-medium text-sm transition">Cancel</button>
+                    <button type="submit" id="saveBtn" class="btn-press flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium text-sm shadow-sm transition">Save Contact</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Toast -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 text-sm flex items-center gap-2">
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg transform translate-y-20 scale-90 opacity-0 transition-all duration-300 ease-out z-[60] text-sm flex items-center gap-2">
         <i class="fa-solid fa-circle-check text-emerald-400"></i>
         <span id="toastMessage">Success message</span>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
             from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
                  collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs }
@@ -189,6 +237,7 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        auth.useDeviceLanguage();
         // Offline cache: bina internet ke bhi data dikhega, net aate hi sync ho jayega
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
@@ -205,18 +254,97 @@
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         const contactsCol = () => collection(db, 'users', currentUser.uid, 'contacts');
 
+        // ---------- Smooth modal helpers ----------
+        function openModal(el) {
+            el.classList.remove('hidden', 'closing');
+            el.classList.add('flex');
+            const card = el.querySelector('[data-modal-card]');
+            if (card) { card.classList.remove('closing'); void card.offsetWidth; }
+        }
+        function closeModalEl(el, done) {
+            if (!el || el.classList.contains('hidden')) { if (done) done(); return; }
+            el.classList.add('closing');
+            const card = el.querySelector('[data-modal-card]');
+            if (card) card.classList.add('closing');
+            setTimeout(() => {
+                el.classList.add('hidden');
+                el.classList.remove('flex', 'closing');
+                if (card) card.classList.remove('closing');
+                if (done) done();
+            }, 195);
+        }
+
+        function showToast(message) {
+            const toast = $('toast');
+            $('toastMessage').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0', 'scale-90');
+            clearTimeout(showToast._t);
+            showToast._t = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0', 'scale-90'), 2800);
+        }
+
         // ---------- Auth ----------
-        $('loginBtn').addEventListener('click', async () => {
-            $('loginError').classList.add('hidden');
+        function friendlyAuthError(err) {
+            const code = err && err.code ? err.code : '';
+            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+                return 'Login window band ho gaya. Dobara "Google se Login karein" par click karein.';
+            }
+            if (code === 'auth/unauthorized-domain') {
+                return 'Yeh domain Google login ke liye authorized nahi hai. Firebase Console → Authentication → Settings → Authorized domains me yeh domain add karein.';
+            }
+            if (code === 'auth/operation-not-allowed') {
+                return 'Google sign-in provider enable nahi hai. Firebase Console → Authentication → Sign-in method me Google enable karein.';
+            }
+            if (code === 'auth/blocked-by-browser' || code === 'auth/popup-blocked') {
+                return 'Browser ne popup block kiya. Popup allow karein (ya Chrome me kholen) aur dobara try karein.';
+            }
+            if (code === 'auth/network-request-failed') {
+                return 'Internet connection ka problem lagta hai. Net check karke dobara try karein.';
+            }
+            if (code === 'auth/invalid-api-key' || code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+                return 'Firebase API key galat hai ya API key par restriction lagi hai. Console → Project settings se key check karein.';
+            }
+            return 'Login nahi ho paya: ' + (code || (err && err.message) || 'unknown error');
+        }
+
+        async function doLogin() {
+            const btn = $('loginBtn');
+            const err = $('loginError');
+            err.classList.add('hidden');
+            btn.disabled = true;
+            $('loginIcon').classList.add('hidden');
+            $('loginSpinner').classList.remove('hidden');
+            $('loginBtnText').innerText = 'Login ho raha hai...';
+
             try {
                 await signInWithPopup(auth, new GoogleAuthProvider());
-            } catch (err) {
-                $('loginError').textContent = 'Login nahi ho paya: ' + (err.code || err.message);
-                $('loginError').classList.remove('hidden');
+            } catch (e) {
+                const code = e && e.code ? e.code : '';
+                // Popup block / unsupported environment -> redirect fallback
+                if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/web-storage-unsupported') {
+                    try { await signInWithRedirect(auth, new GoogleAuthProvider()); return; } catch (e2) { e = e2; }
+                }
+                err.textContent = friendlyAuthError(e);
+                err.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                $('loginSpinner').classList.add('hidden');
+                $('loginIcon').classList.remove('hidden');
+                $('loginBtnText').innerText = 'Google se Login karein';
             }
-        });
+        }
 
-        window.logout = async () => { await signOut(auth); };
+        $('loginBtn').addEventListener('click', doLogin);
+
+        window.logout = async () => {
+            try { await signOut(auth); showToast('Logout ho gaya.'); }
+            catch (e) { showToast('Logout fail: ' + (e.code || e.message)); }
+        };
+
+        // Redirect login ke baad error dikhana
+        getRedirectResult(auth).catch((e) => {
+            $('loginError').textContent = friendlyAuthError(e);
+            $('loginError').classList.remove('hidden');
+        });
 
         onAuthStateChanged(auth, (user) => {
             if (unsubscribe) { unsubscribe(); unsubscribe = null; }
@@ -224,14 +352,30 @@
                 currentUser = user;
                 firstSnapshot = true;
                 $('loginScreen').classList.add('hidden');
+                $('loginScreen').classList.remove('flex');
+                $('userChip').classList.remove('hidden');
+                $('userChip').classList.add('flex');
+                if (user.displayName) {
+                    $('userName').innerText = user.displayName.split(' ')[0];
+                    $('userName').classList.remove('hidden');
+                }
+                if (user.photoURL) {
+                    $('userPhoto').src = user.photoURL;
+                    $('userPhoto').classList.remove('hidden');
+                }
                 startListening();
             } else {
                 currentUser = null;
                 contacts = [];
                 activeContactId = null;
-                renderContacts();
-                showEmptyDetail();
-                $('loginScreen').classList.remove('hidden');
+                if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+                $('contactCount').innerText = '0';
+                $('contactsList').innerHTML = `<div class="empty-pop text-center py-8 text-slate-400 text-sm">Login karke apne contacts dekhein</div>`;
+                $('userChip').classList.add('hidden');
+                $('userChip').classList.remove('flex');
+                $('syncStatus').textContent = '';
+                closeModalEl($('detailModal'));
+                openModal($('loginScreen'));
             }
         });
 
@@ -249,15 +393,18 @@
                 renderContacts($('searchInput').value);
                 const active = contacts.find(c => c.id === activeContactId);
                 if (active) {
-                    renderDetail(active, false);
-                } else if (contacts.length > 0) {
-                    selectContact(contacts[0].id);
-                } else {
-                    activeContactId = null;
-                    showEmptyDetail();
+                    renderDetail(active, document.activeElement !== $('contactNotes'));
+                } else if (activeContactId) {
+                    closeModalEl($('detailModal'), () => { activeContactId = null; });
                 }
             }, (err) => {
-                showToast('Sync error: ' + (err.code || err.message));
+                console.error(err);
+                const m = (err && err.code) || '';
+                if (m === 'permission-denied') {
+                    showToast('Firestore permission denied — security rules check karein.');
+                } else {
+                    showToast('Sync error: ' + (m || err.message));
+                }
             });
         }
 
@@ -283,17 +430,13 @@
         }
 
         // ---------- UI ----------
-        function showToast(message) {
-            const toast = $('toast');
-            $('toastMessage').innerText = message;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2500);
+        function closeDetail() {
+            closeModalEl($('detailModal'), () => {
+                activeContactId = null;
+                renderContacts($('searchInput').value);
+            });
         }
-
-        function showEmptyDetail() {
-            $('noContactSelected').classList.remove('hidden');
-            $('contactDetailsContent').classList.add('hidden');
-        }
+        window.closeDetail = closeDetail;
 
         function renderContacts(filter = '') {
             const f = filter.toLowerCase();
@@ -305,12 +448,12 @@
             $('contactCount').innerText = filtered.length;
 
             if (filtered.length === 0) {
-                $('contactsList').innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">Koi contact nahi mila</div>`;
+                $('contactsList').innerHTML = `<div class="empty-pop text-center py-8 text-slate-400 text-sm">${contacts.length === 0 ? 'Abhi koi contact nahi hai — "Naya Contact" se add karein.' : 'Koi contact nahi mila'}</div>`;
                 return;
             }
-            $('contactsList').innerHTML = filtered.map(c => `
-                <div onclick="selectContact('${c.id}')"
-                    class="p-3 rounded-xl cursor-pointer transition flex items-center justify-between border ${activeContactId === c.id ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-100 hover:bg-slate-50'}">
+            $('contactsList').innerHTML = filtered.map((c, i) => `
+                <div onclick="selectContact('${c.id}')" style="animation-delay:${Math.min(i * 45, 360)}ms"
+                    class="list-row p-3 rounded-xl cursor-pointer flex items-center justify-between border ${activeContactId === c.id ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-100 hover:bg-slate-50'}">
                     <div class="flex items-center gap-3 overflow-hidden">
                         <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 font-semibold flex items-center justify-center shrink-0 text-sm">
                             ${esc((c.name || '?').charAt(0).toUpperCase())}
@@ -337,6 +480,9 @@
             if (updateNotes || document.activeElement !== $('contactNotes')) {
                 $('contactNotes').value = contact.notes || '';
             }
+            // avatar pop dobara chalane ke liye
+            const av = $('detailAvatar');
+            av.classList.remove('avatar-pop'); void av.offsetWidth; av.classList.add('avatar-pop');
         }
 
         window.selectContact = (id) => {
@@ -345,13 +491,7 @@
             if (!contact) return;
 
             renderContacts($('searchInput').value);
-            $('noContactSelected').classList.add('hidden');
-            const contentEl = $('contactDetailsContent');
-            contentEl.classList.remove('hidden');
-            contentEl.classList.remove('slide-in');
-            void contentEl.offsetWidth;
-            contentEl.classList.add('slide-in');
-
+            openModal($('detailModal'));
             renderDetail(contact, true);
         };
 
@@ -376,7 +516,7 @@
             $('modalTitle').innerText = "Naya Contact Jodein";
             $('contactForm').reset();
             $('contactId').value = '';
-            $('contactModal').classList.remove('hidden');
+            openModal($('contactModal'));
         };
 
         window.editCurrentContact = () => {
@@ -387,17 +527,22 @@
             $('nameInput').value = contact.name;
             $('phoneInput').value = contact.phone;
             $('categoryInput').value = contact.category || '';
-            $('contactModal').classList.remove('hidden');
+            openModal($('contactModal'));
         };
 
-        window.closeModal = () => $('contactModal').classList.add('hidden');
+        window.closeModal = () => closeModalEl($('contactModal'));
 
         window.saveContact = async (e) => {
             e.preventDefault();
+            if (!currentUser) { showToast('Pehle login karein.'); return; }
+
             const id = $('contactId').value;
             const name = $('nameInput').value.trim();
             const phone = $('phoneInput').value.trim();
             const category = $('categoryInput').value.trim() || 'General';
+            const saveBtn = $('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Saving...';
 
             try {
                 if (id) {
@@ -409,26 +554,45 @@
                     await setDoc(ref, { name, phone, category, notes: '', createdAt: Date.now() });
                     showToast('Naya contact jud gaya!');
                 }
-                closeModal();
+                closeModalEl($('contactModal'), () => {
+                    renderContacts($('searchInput').value);
+                    const active = contacts.find(c => c.id === activeContactId);
+                    if (active) { openModal($('detailModal')); renderDetail(active, true); }
+                });
             } catch (err) {
+                console.error(err);
                 showToast('Save nahi hua: ' + (err.code || err.message));
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Contact';
             }
         };
 
         window.deleteCurrentContact = async () => {
-            if (!activeContactId) return;
+            if (!activeContactId || !currentUser) return;
             if (!confirm("Kya aap is contact ko delete karna chahte hain?")) return;
+            const id = activeContactId;
             try {
-                const id = activeContactId;
-                activeContactId = null;
                 await deleteDoc(doc(db, 'users', currentUser.uid, 'contacts', id));
-                showToast('Contact delete ho gaya.');
+                closeModalEl($('detailModal'), () => {
+                    activeContactId = null;
+                    renderContacts($('searchInput').value);
+                    showToast('Contact delete ho gaya.');
+                });
             } catch (err) {
+                console.error(err);
                 showToast('Delete nahi hua: ' + (err.code || err.message));
             }
         };
 
         $('searchInput').addEventListener('input', (e) => renderContacts(e.target.value));
+
+        // Escape se popup band
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (!$('contactModal').classList.contains('hidden')) { closeModalEl($('contactModal')); return; }
+            if (!$('detailModal').classList.contains('hidden')) closeDetail();
+        });
     </script>
 </body>
 </html>
